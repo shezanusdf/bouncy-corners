@@ -11,6 +11,11 @@ NUMBER_OF_LOGOS = st.sidebar.slider(
 PAUSE_AMOUNT = st.sidebar.slider(
     "Animation speed (seconds per frame)", min_value=0.01, max_value=1.0, value=0.1, step=0.01
 )
+CLOUD_MODE = st.sidebar.checkbox(
+    "Cloud Mode (enable if animation is laggy/static on Streamlit Cloud)",
+    value=False,
+    help="Increases minimum frame time for better performance on cloud deployments"
+)
 
 # --- SETTINGS ---
 WIDTH, HEIGHT = 600, 400  # Canvas size
@@ -51,11 +56,30 @@ canvas_placeholder = st.empty()
 counter_placeholder = st.empty()  # Corner bounces placeholder
 debug_placeholder = st.empty()  # Debug info placeholder
 
-# Monospace font to mimic terminal
-try:
-    font = ImageFont.truetype("DejaVuSansMono.ttf", 24)
-except:
-    font = ImageFont.load_default()
+# Monospace font to mimic terminal - try multiple common system fonts
+font = None
+font_paths = [
+    "DejaVuSansMono.ttf",  # Local Windows/Mac
+    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",  # Linux/Cloud
+    "/System/Library/Fonts/Courier.dfont",  # Mac
+    "C:\\Windows\\Fonts\\consola.ttf",  # Windows Consolas
+    "courier",  # Generic courier
+]
+font_size = 24
+
+for font_path in font_paths:
+    try:
+        font = ImageFont.truetype(font_path, font_size)
+        break
+    except:
+        continue
+
+if font is None:
+    # Last resort: use PIL's default font with size
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
 
 # --- ANIMATION LOOP ---
 while True:
@@ -127,7 +151,9 @@ while True:
 
     # Adaptive frame timing to ensure Streamlit can render
     frame_time = time.time() - frame_start_time
-    actual_sleep = max(PAUSE_AMOUNT - frame_time, 0.01)  # Minimum 0.01s for Streamlit to process
+    # Adjust minimum sleep based on environment
+    MIN_SLEEP = 0.15 if CLOUD_MODE else 0.05  # Cloud needs more time for network/rendering
+    actual_sleep = max(PAUSE_AMOUNT - frame_time, MIN_SLEEP)
     total_frame_time = frame_time + actual_sleep
     actual_fps = 1.0 / total_frame_time if total_frame_time > 0 else 0
     debug_placeholder.markdown(
