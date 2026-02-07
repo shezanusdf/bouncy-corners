@@ -152,7 +152,7 @@ while True:
     # Adaptive frame timing to ensure Streamlit can render
     frame_time = time.time() - frame_start_time
     # Adjust minimum sleep based on environment
-    MIN_SLEEP = 0.15 if CLOUD_MODE else 0.05  # Cloud needs more time for network/rendering
+    MIN_SLEEP = 0.30 if CLOUD_MODE else 0.05  # Cloud needs more time for network/rendering
     actual_sleep = max(PAUSE_AMOUNT - frame_time, MIN_SLEEP)
     total_frame_time = frame_time + actual_sleep
     actual_fps = 1.0 / total_frame_time if total_frame_time > 0 else 0
