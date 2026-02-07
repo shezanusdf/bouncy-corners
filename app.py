@@ -1,6 +1,7 @@
 import streamlit as st
-from streamlit_drawable_canvas import st_canvas
+from PIL import Image, ImageDraw, ImageFont
 import random
+import time
 
 # --- USER INPUTS ---
 st.sidebar.header("Settings")
@@ -8,12 +9,11 @@ NUMBER_OF_LOGOS = st.sidebar.slider(
     "Number of logos", min_value=1, max_value=100, value=5
 )
 PAUSE_AMOUNT = st.sidebar.slider(
-    "Animation speed (seconds per frame)", min_value=0.01, max_value=1.0, value=0.05, step=0.01
+    "Animation speed (seconds per frame)", min_value=0.01, max_value=1.0, value=0.1, step=0.01
 )
 
 # --- SETTINGS ---
 WIDTH, HEIGHT = 600, 400  # Canvas size
-LOGO_WIDTH, LOGO_HEIGHT = 60, 30
 COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
 
 # Directions
@@ -26,109 +26,100 @@ X = 'x'
 Y = 'y'
 DIR = 'direction'
 
-# --- STREAMLIT STATE INIT ---
+# --- STREAMLIT STATE ---
 if 'logos' not in st.session_state or len(st.session_state.logos) != NUMBER_OF_LOGOS:
     st.session_state.logos = []
     for _ in range(NUMBER_OF_LOGOS):
-        x = random.randint(0, WIDTH - LOGO_WIDTH)
-        y = random.randint(0, HEIGHT - LOGO_HEIGHT)
+        x = random.randint(1, WIDTH - 60)
+        y = random.randint(1, HEIGHT - 30)
+        if x % 2 == 1:
+            x -= 1  # Make X even to match terminal logic
         st.session_state.logos.append({
             COLOR: random.choice(COLORS),
             X: x,
             Y: y,
             DIR: random.choice(DIRECTIONS)
         })
-    st.session_state.corner_bounces = 0
+    st.session_state.corner_bounces = 0  # Reset counter when logos change
 
 if 'corner_bounces' not in st.session_state:
     st.session_state.corner_bounces = 0
 
-# --- AUTO REFRESH ---
-from streamlit_autorefresh import st_autorefresh
-st_autorefresh(interval=int(PAUSE_AMOUNT * 1000), limit=None, key="bouncy_loop")
+# --- STREAMLIT UI ---
+st.title("Bouncing DVD Logo")
+canvas_placeholder = st.empty()
+counter_placeholder = st.empty()  # Corner bounces placeholder
 
-# --- DRAW LOGOS ---
-canvas = st_canvas(
-    fill_color="black",
-    stroke_width=1,
-    stroke_color="black",
-    background_color="black",
-    width=WIDTH,
-    height=HEIGHT,
-    drawing_mode="rect",
-    key="canvas",
-)
+# Monospace font to mimic terminal
+try:
+    font = ImageFont.truetype("DejaVuSansMono.ttf", 24)
+except:
+    font = ImageFont.load_default()
 
-for logo in st.session_state.logos:
-    original_direction = logo[DIR]
+# --- ANIMATION LOOP ---
+while True:
+    img = Image.new("RGB", (WIDTH, HEIGHT), "black")
+    draw = ImageDraw.Draw(img)
 
-    # --- CORNER BOUNCES ---
-    if logo[X] <= 0 and logo[Y] <= 0:
-        logo[DIR] = DOWN_RIGHT
-        st.session_state.corner_bounces += 1
-    elif logo[X] <= 0 and logo[Y] >= HEIGHT - LOGO_HEIGHT:
-        logo[DIR] = UP_RIGHT
-        st.session_state.corner_bounces += 1
-    elif logo[X] >= WIDTH - LOGO_WIDTH and logo[Y] <= 0:
-        logo[DIR] = DOWN_LEFT
-        st.session_state.corner_bounces += 1
-    elif logo[X] >= WIDTH - LOGO_WIDTH and logo[Y] >= HEIGHT - LOGO_HEIGHT:
-        logo[DIR] = UP_LEFT
-        st.session_state.corner_bounces += 1
+    for logo in st.session_state.logos:
+        original_direction = logo[DIR]
 
-    # --- EDGE BOUNCES ---
-    if logo[X] <= 0 and logo[DIR] == UP_LEFT:
-        logo[DIR] = UP_RIGHT
-    elif logo[X] <= 0 and logo[DIR] == DOWN_LEFT:
-        logo[DIR] = DOWN_RIGHT
-    elif logo[X] >= WIDTH - LOGO_WIDTH and logo[DIR] == UP_RIGHT:
-        logo[DIR] = UP_LEFT
-    elif logo[X] >= WIDTH - LOGO_WIDTH and logo[DIR] == DOWN_RIGHT:
-        logo[DIR] = DOWN_LEFT
+        # --- CORNER BOUNCES ---
+        if logo[X] <= 0 and logo[Y] <= 0:
+            logo[DIR] = DOWN_RIGHT
+            st.session_state.corner_bounces += 1
+        elif logo[X] <= 0 and logo[Y] >= HEIGHT - 30:
+            logo[DIR] = UP_RIGHT
+            st.session_state.corner_bounces += 1
+        elif logo[X] >= WIDTH - 60 and logo[Y] <= 0:
+            logo[DIR] = DOWN_LEFT
+            st.session_state.corner_bounces += 1
+        elif logo[X] >= WIDTH - 60 and logo[Y] >= HEIGHT - 30:
+            logo[DIR] = UP_LEFT
+            st.session_state.corner_bounces += 1
 
-    if logo[Y] <= 0 and logo[DIR] == UP_LEFT:
-        logo[DIR] = DOWN_LEFT
-    elif logo[Y] <= 0 and logo[DIR] == UP_RIGHT:
-        logo[DIR] = DOWN_RIGHT
-    elif logo[Y] >= HEIGHT - LOGO_HEIGHT and logo[DIR] == DOWN_LEFT:
-        logo[DIR] = UP_LEFT
-    elif logo[Y] >= HEIGHT - LOGO_HEIGHT and logo[DIR] == DOWN_RIGHT:
-        logo[DIR] = UP_RIGHT
+        # --- EDGE BOUNCES ---
+        if logo[X] <= 0 and logo[DIR] == UP_LEFT:
+            logo[DIR] = UP_RIGHT
+        elif logo[X] <= 0 and logo[DIR] == DOWN_LEFT:
+            logo[DIR] = DOWN_RIGHT
+        elif logo[X] >= WIDTH - 60 and logo[DIR] == UP_RIGHT:
+            logo[DIR] = UP_LEFT
+        elif logo[X] >= WIDTH - 60 and logo[DIR] == DOWN_RIGHT:
+            logo[DIR] = DOWN_LEFT
 
-    # Change color on bounce
-    if logo[DIR] != original_direction:
-        logo[COLOR] = random.choice(COLORS)
+        if logo[Y] <= 0 and logo[DIR] == UP_LEFT:
+            logo[DIR] = DOWN_LEFT
+        elif logo[Y] <= 0 and logo[DIR] == UP_RIGHT:
+            logo[DIR] = DOWN_RIGHT
+        elif logo[Y] >= HEIGHT - 30 and logo[DIR] == DOWN_LEFT:
+            logo[DIR] = UP_LEFT
+        elif logo[Y] >= HEIGHT - 30 and logo[DIR] == DOWN_RIGHT:
+            logo[DIR] = UP_RIGHT
 
-    # --- MOVE LOGO ---
-    if logo[DIR] == UP_RIGHT:
-        logo[X] += 4
-        logo[Y] -= 2
-    elif logo[DIR] == UP_LEFT:
-        logo[X] -= 4
-        logo[Y] -= 2
-    elif logo[DIR] == DOWN_RIGHT:
-        logo[X] += 4
-        logo[Y] += 2
-    elif logo[DIR] == DOWN_LEFT:
-        logo[X] -= 4
-        logo[Y] += 2
+        # Change color on bounce
+        if logo[DIR] != original_direction:
+            logo[COLOR] = random.choice(COLORS)
 
-    # Draw rectangle for logo
-    if canvas:
-        canvas.rect(
-            x=logo[X],
-            y=logo[Y],
-            width=LOGO_WIDTH,
-            height=LOGO_HEIGHT,
-            fill=logo[COLOR],
-        )
-        # Draw "DVD" text inside rectangle
-        canvas.text(
-            x=logo[X]+5,
-            y=logo[Y]+5,
-            text="DVD",
-            fill="white",
-            font_size=14
-        )
+        # --- MOVE LOGO ---
+        if logo[DIR] == UP_RIGHT:
+            logo[X] += 4
+            logo[Y] -= 2
+        elif logo[DIR] == UP_LEFT:
+            logo[X] -= 4
+            logo[Y] -= 2
+        elif logo[DIR] == DOWN_RIGHT:
+            logo[X] += 4
+            logo[Y] += 2
+        elif logo[DIR] == DOWN_LEFT:
+            logo[X] -= 4
+            logo[Y] += 2
 
-st.markdown(f"**Corner bounces:** {st.session_state.corner_bounces}")
+        # Draw the logo
+        draw.text((logo[X], logo[Y]), "DVD", fill=logo[COLOR], font=font)
+
+    # --- UPDATE STREAMLIT PLACEHOLDERS ---
+    canvas_placeholder.image(img, width=WIDTH)
+    counter_placeholder.markdown(f"**Corner bounces:** {st.session_state.corner_bounces}")
+
+    time.sleep(PAUSE_AMOUNT)
