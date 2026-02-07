@@ -49,6 +49,7 @@ if 'corner_bounces' not in st.session_state:
 st.title("Bouncing DVD Logo")
 canvas_placeholder = st.empty()
 counter_placeholder = st.empty()  # Corner bounces placeholder
+debug_placeholder = st.empty()  # Debug info placeholder
 
 # Monospace font to mimic terminal
 try:
@@ -58,6 +59,8 @@ except:
 
 # --- ANIMATION LOOP ---
 while True:
+    frame_start_time = time.time()
+
     img = Image.new("RGB", (WIDTH, HEIGHT), "black")
     draw = ImageDraw.Draw(img)
 
@@ -122,4 +125,13 @@ while True:
     canvas_placeholder.image(img, width=WIDTH)
     counter_placeholder.markdown(f"**Corner bounces:** {st.session_state.corner_bounces}")
 
-    time.sleep(PAUSE_AMOUNT)
+    # Adaptive frame timing to ensure Streamlit can render
+    frame_time = time.time() - frame_start_time
+    actual_sleep = max(PAUSE_AMOUNT - frame_time, 0.01)  # Minimum 0.01s for Streamlit to process
+    total_frame_time = frame_time + actual_sleep
+    actual_fps = 1.0 / total_frame_time if total_frame_time > 0 else 0
+    debug_placeholder.markdown(
+        f"*Debug: Frame computation: {frame_time:.3f}s | Sleep: {actual_sleep:.3f}s | "
+        f"Target FPS: {1/PAUSE_AMOUNT:.1f} | Actual FPS: {actual_fps:.1f}*"
+    )
+    time.sleep(actual_sleep)
