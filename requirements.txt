@@ -1,3 +1,4 @@
 streamlit
 Pillow
 streamlit-autorefresh
+streamlit_drawable_canvas
