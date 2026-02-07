@@ -26,7 +26,7 @@ X = 'x'
 Y = 'y'
 DIR = 'direction'
 
-# --- STREAMLIT STATE ---
+# --- STREAMLIT STATE INIT ---
 if 'logos' not in st.session_state or len(st.session_state.logos) != NUMBER_OF_LOGOS:
     st.session_state.logos = []
     for _ in range(NUMBER_OF_LOGOS):
@@ -45,12 +45,20 @@ if 'logos' not in st.session_state or len(st.session_state.logos) != NUMBER_OF_L
 if 'corner_bounces' not in st.session_state:
     st.session_state.corner_bounces = 0
 
+# Persist the image to reduce flicker
+if 'img' not in st.session_state:
+    st.session_state.img = Image.new("RGB", (WIDTH, HEIGHT), "black")
+
+img = st.session_state.img
+draw = ImageDraw.Draw(img)
+draw.rectangle((0, 0, WIDTH, HEIGHT), fill="black")  # clear previous frame
+
 # --- STREAMLIT UI ---
 st.title("Bouncing DVD Logo")
 canvas_placeholder = st.empty()
 counter_placeholder = st.empty()  # Corner bounces placeholder
 
-# Monospace font to mimic terminal
+# Load font
 try:
     font = ImageFont.truetype("DejaVuSansMono.ttf", 24)
 except:
@@ -59,10 +67,7 @@ except:
 # --- AUTO REFRESH ---
 st_autorefresh(interval=int(PAUSE_AMOUNT * 1000), limit=None, key="bouncy_loop")
 
-# --- CREATE FRAME ---
-img = Image.new("RGB", (WIDTH, HEIGHT), "black")
-draw = ImageDraw.Draw(img)
-
+# --- UPDATE LOGO POSITIONS AND DRAW ---
 for logo in st.session_state.logos:
     original_direction = logo[DIR]
 
@@ -120,6 +125,6 @@ for logo in st.session_state.logos:
     # Draw the logo
     draw.text((logo[X], logo[Y]), "DVD", fill=logo[COLOR], font=font)
 
-# --- UPDATE STREAMLIT PLACEHOLDERS ---
+# --- DISPLAY ---
 canvas_placeholder.image(img, width=WIDTH)
 counter_placeholder.markdown(f"**Corner bounces:** {st.session_state.corner_bounces}")
